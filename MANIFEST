@@ -1,0 +1,9 @@
+Makefile.PL
+MANIFEST
+README
+Bluetooth.xs
+Bluetooth.pm
+test.pl
+typemap
+Changes
+META.yml                                 Module meta-data (added by MakeMaker)
