@@ -21,7 +21,109 @@ extern "C" {
 
 typedef PerlIO * InOutStream;
 
+#define BROWSE_GROUP_STRING "1002"
+
+// Code from PyBlueZ
+int
+str2uuid(char *uuid_str, uuid_t *uuid)
+{
+    uint32_t uuid_int[4];
+    char *endptr;
+                                                                                                                        
+    if(strlen(uuid_str) == 36) {
+        // Parse uuid128 standard format: 12345678-9012-3456-7890-123456789012
+        char buf[9] = { 0 };
+                                                                                                                        
+        if(uuid_str[8] != '-' && uuid_str[13] != '-' &&
+           uuid_str[18] != '-'  && uuid_str[23] != '-') {
+            return -1;
+        }
+        // first 8-bytes
+        strncpy(buf, uuid_str, 8);
+        uuid_int[0] = htonl(strtoul(buf, &endptr, 16));
+        if(endptr != buf + 8) return -1;
+                                                                                                                        
+        // second 8-bytes
+        strncpy(buf, uuid_str+9, 4);
+        strncpy(buf+4, uuid_str+14, 4);
+        uuid_int[1] = htonl(strtoul( buf, &endptr, 16));
+        if(endptr != buf + 8) return -1;
+                                                                                                                        
+        // third 8-bytes
+        strncpy(buf, uuid_str+19, 4);
+        strncpy(buf+4, uuid_str+24, 4);
+        uuid_int[2] = htonl(strtoul(buf, &endptr, 16));
+        if(endptr != buf + 8) return -1;
+                                                                                                                        
+        // fourth 8-bytes
+	 strncpy(buf, uuid_str+28, 8);
+        uuid_int[3] = htonl(strtoul(buf, &endptr, 16));
+        if(endptr != buf + 8) return -1;
+                                                                                                                        
+        if(uuid != NULL) sdp_uuid128_create(uuid, uuid_int);
+    } 
+
+    else if(strlen(uuid_str) == 8) {
+        // 32-bit reserved UUID
+        uint32_t i = strtoul(uuid_str, &endptr, 16);
+        if(endptr != uuid_str + 8) return -1;
+        if(uuid != NULL) sdp_uuid32_create(uuid, i);
+    }
+
+    else if(strlen(uuid_str) == 6) {
+        // 16-bit reserved UUID with 0x on front
+	if(uuid_str[0] == '0' && uuid_str[1] == 'x' || uuid_str[1] == 'X') {
+		// move chars up
+		uuid_str[0] = uuid_str[2];
+		uuid_str[1] = uuid_str[3];
+		uuid_str[2] = uuid_str[4];
+		uuid_str[3] = uuid_str[5];
+		uuid_str[4] = '\0';
+        	int i = strtol(uuid_str, &endptr, 16);
+        	if(endptr != uuid_str + 4) return -1;
+        	if(uuid != NULL) sdp_uuid16_create(uuid, i);
+	}
+
+	else return(-1);
+    }
+
+    else if(strlen(uuid_str) == 4) {
+        // 16-bit reserved UUID
+        int i = strtol(uuid_str, &endptr, 16);
+        if(endptr != uuid_str + 4) return -1;
+        if(uuid != NULL) sdp_uuid16_create(uuid, i);
+    }
+
+    else {
+        return -1;
+    }
+                                                                                                                        
+    return 0;
+}
+
+
+
+
 MODULE = Net::Bluetooth	PACKAGE = Net::Bluetooth
+
+
+
+int
+_init()
+	CODE:
+	RETVAL = 0;
+
+	OUTPUT:
+	RETVAL 
+
+
+int
+_deinit()
+	CODE:
+	RETVAL = 0;
+
+	OUTPUT:
+	RETVAL 
 
 
 void
@@ -36,6 +138,16 @@ _perlfh(fd)
 	CODE:
 	InOutStream fh = PerlIO_fdopen(fd, "r+");
 	RETVAL = fh;
+
+	OUTPUT:
+	RETVAL 
+
+
+unsigned int
+_use_service_handle()
+	CODE:
+	// We use a service handle with BlueZ
+	RETVAL = 1;
 
 	OUTPUT:
 	RETVAL 
@@ -68,19 +180,18 @@ get_remote_devices(...)
 
 	if(dev_id < 0) {
 		//croak("Invalid device ID returned\n");
-		return;
+		XSRETURN_UNDEF;
 	}
 
 	int sock = hci_open_dev(dev_id);
     	if(sock < 0) {
 		//croak("Could not open device socket\n");
-        	return;
+		XSRETURN_UNDEF;
     	}
 
     	inquiry_info *ii = (inquiry_info*) malloc(max_rsp * sizeof(inquiry_info));
 	if(ii == NULL) {
 		croak("malloc failed in get_remote_devices");
-		return;
 	}
 
     	int num_rsp = hci_inquiry(dev_id, len, max_rsp, NULL, &ii, flags);
@@ -88,7 +199,7 @@ get_remote_devices(...)
     	if(num_rsp <= 0) {
 		free(ii);
 		close(sock);
-		return;
+		XSRETURN_UNDEF;
 	}
 
 	HV *return_hash = newHV();
@@ -105,10 +216,11 @@ get_remote_devices(...)
 	PUSHs(sv_2mortal(newRV_inc((SV*) return_hash)));
 	close(sock);
 
+
 void
 sdp_search(addr, service, name)
 	char *addr
-	int service
+	char *service
 	char *name
 	PPCODE:
 	EXTEND(sp, 1);
@@ -128,18 +240,25 @@ sdp_search(addr, service, name)
 	// connect to remote or local SDP server
 	session = sdp_connect(BDADDR_ANY, &target, SDP_RETRY_IF_BUSY);
 	if(session == NULL) 
-		return;
+		XSRETURN_UNDEF;
                                                                                 
 	// specify the UUID of the application we are searching for
 	// convert the UUID string into a uuid_t
 	// if service is 0 search for PUBLIC_BROWSE_GROUP
 	if(service == 0) {
-		sdp_uuid16_create(&svc_uuid, PUBLIC_BROWSE_GROUP);
+		//sdp_uuid16_create(&svc_uuid, PUBLIC_BROWSE_GROUP);
+		if(str2uuid(BROWSE_GROUP_STRING, &svc_uuid) != 0) {
+			XSRETURN_UNDEF;
+		}
+			
 	}
 
 	else {
         	//uint16_t service_id = service;
-        	sdp_uuid16_create(&svc_uuid, (uint16_t) service);
+        	//sdp_uuid16_create(&svc_uuid, (uint16_t) service);
+		if(str2uuid(service, &svc_uuid) != 0){
+			XSRETURN_UNDEF;
+		}
 	}
 
     	sdp_list_t *search_list = sdp_list_append(NULL, &svc_uuid);
@@ -151,8 +270,8 @@ sdp_search(addr, service, name)
 	if(sdp_service_search_attr_req(session, search_list, SDP_ATTR_REQ_RANGE, attrid_list, &response_list) != 0) {
     		sdp_list_free(search_list, 0);
     		sdp_list_free(attrid_list, 0);
-		return;
-        }
+		XSRETURN_UNDEF;
+	}
 
         sdp_list_t *r = response_list;
 
@@ -409,16 +528,17 @@ _accept(fd, proto)
 
 
 unsigned int
-register_service(proto, port, service_id, name)
+_register_service_handle(proto, port, service_id, name, desc)
 	char *proto
 	int port
-	int service_id
+	char *service_id
 	char *name
-	CODE:
+	char *desc
+	PPCODE:
 	uint8_t rfcomm_channel = 0;
 	uint16_t l2cap_port = 0;
 	const char *service_name = name;
-	const char *service_dsc = name;
+	const char *service_dsc = desc;
 	const char *service_prov = name;
                                                                                                                    
 	uuid_t root_uuid, l2cap_uuid, rfcomm_uuid, svc_uuid;
@@ -431,8 +551,10 @@ register_service(proto, port, service_id, name)
                                                                                                                    
 	sdp_record_t *record = sdp_record_alloc();
                                                                                                                    
-	// set the general service ID
-	sdp_uuid16_create(&svc_uuid, service_id);
+	//sdp_uuid16_create(&svc_uuid, service_id);
+	if(str2uuid(service_id, &svc_uuid) != 0) {
+		XSRETURN_IV(0);	
+	}
 	sdp_set_service_id(record, svc_uuid);
                                                                                                                    
 	// make the service record publicly browsable
@@ -471,16 +593,18 @@ register_service(proto, port, service_id, name)
 	sdp_session_t *session = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
 	if(session) {
 		if(sdp_record_register(session, record, 0) >= 0) {
-			RETVAL = (unsigned int) session;
+			// this is bad and should be kept internal
+			// will fix this up next run
+			PUSHs(sv_2mortal(newSVuv((unsigned int)session)));
 		}
 
 		else {
-			RETVAL = 0;
+			PUSHs(sv_2mortal(newSViv(0)));
 		}
 	}
 
 	else {
-		RETVAL = 0;
+		PUSHs(sv_2mortal(newSViv(0)));
 	}
                                                                                                                    
 	sdp_data_free(channel);
@@ -489,14 +613,10 @@ register_service(proto, port, service_id, name)
 	sdp_list_free(root_list, 0);
 	sdp_list_free(access_proto_list, 0);
                                                                                                                    
-	OUTPUT:
-	RETVAL 
-
-
 
 
 void
-unregister_service(sdp_addr)
+_stop_service_handle(sdp_addr)
 	unsigned int sdp_addr
 	CODE:
 	sdp_session_t *sdp_session;

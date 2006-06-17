@@ -1,7 +1,8 @@
 Makefile.PL
 MANIFEST
 README
-Bluetooth.xs
+BlueZ.xs
+MSWin.xs
 Bluetooth.pm
 test.pl
 typemap
