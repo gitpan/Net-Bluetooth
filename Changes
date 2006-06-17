@@ -6,3 +6,9 @@ Revision history for Perl extension Net::Bluetooth
 0.34  Fri June 16 17:07:11 2006
 	- Added Windows support.
 	- Changed the API.
+
+0.35  Sat June 17 00:02:11 2006
+	- Fixed a sdp_search bug where a "0" service_id
+	  was not searching the public group.
+	- Fixed a bug in the sdp_search for Win where keys
+	  where being defined when there was no value.

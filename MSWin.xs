@@ -306,12 +306,11 @@ sdp_search(addr, service, name)
 			if(WSALookupServiceNext(h, flags, &qs_len, qs) == NO_ERROR) {
 				return_hash = newHV();
 
-				if(qs->lpszServiceInstanceName) {
+				if(qs->lpszServiceInstanceName && strlen(qs->lpszServiceInstanceName) > 0) {
 					hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(qs->lpszServiceInstanceName, 0), 0);
 				}
 
-
-				if(qs->lpszServiceInstanceName) {
+				if(qs->lpszComment && strlen(qs->lpszComment) > 0) {
 					hv_store(return_hash, "SERVICE_DESC", strlen("SERVICE_DESC"), newSVpv(qs->lpszComment, 0), 0);
 				}
 

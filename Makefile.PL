@@ -8,7 +8,7 @@ print "OS = $Config{osname}\n";
 
 if($Config{osname} =~ /^MSWin/i) {
 	print "**ATTENTION!!**\n";
-	print "Attempting to build for Windows with the following include directory:\n";
+	print "Attempting to build for Windows with the following include path:\n";
 	print "$win_include\n";
 	print "If this is not the include path for SP2, please change the\n";
 	print "\$win_include variable in Makefile.PL.\n\n\n";

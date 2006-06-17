@@ -245,7 +245,7 @@ sdp_search(addr, service, name)
 	// specify the UUID of the application we are searching for
 	// convert the UUID string into a uuid_t
 	// if service is 0 search for PUBLIC_BROWSE_GROUP
-	if(service == 0) {
+	if(service == NULL || *service == '0') {
 		//sdp_uuid16_create(&svc_uuid, PUBLIC_BROWSE_GROUP);
 		if(str2uuid(BROWSE_GROUP_STRING, &svc_uuid) != 0) {
 			XSRETURN_UNDEF;
