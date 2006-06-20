@@ -56,8 +56,8 @@ str2uuid(char *uuid_str, uuid_t *uuid)
         if(endptr != buf + 8) return -1;
                                                                                                                         
         // fourth 8-bytes
-	 strncpy(buf, uuid_str+28, 8);
-        uuid_int[3] = htonl(strtoul(buf, &endptr, 16));
+		strncpy(buf, uuid_str+28, 8);
+		uuid_int[3] = htonl(strtoul(buf, &endptr, 16));
         if(endptr != buf + 8) return -1;
                                                                                                                         
         if(uuid != NULL) sdp_uuid128_create(uuid, uuid_int);
@@ -160,8 +160,8 @@ get_remote_devices(...)
 	char addr[19];
 	char name[248];
 	char *local_addr;
-    	int len = 8; // 1.28 * len
-    	int max_rsp = 255; // max devices
+	int len = 8; // 1.28 * len
+	int max_rsp = 255; // max devices
 	int flags = IREQ_CACHE_FLUSH; // flush cache of previously discovered devices
 	int dev_id;
 	bdaddr_t baddr;
@@ -184,19 +184,19 @@ get_remote_devices(...)
 	}
 
 	int sock = hci_open_dev(dev_id);
-    	if(sock < 0) {
+	if(sock < 0) {
 		//croak("Could not open device socket\n");
 		XSRETURN_UNDEF;
-    	}
+	}
 
-    	inquiry_info *ii = (inquiry_info*) malloc(max_rsp * sizeof(inquiry_info));
+	inquiry_info *ii = (inquiry_info*) malloc(max_rsp * sizeof(inquiry_info));
 	if(ii == NULL) {
 		croak("malloc failed in get_remote_devices");
 	}
 
-    	int num_rsp = hci_inquiry(dev_id, len, max_rsp, NULL, &ii, flags);
+	int num_rsp = hci_inquiry(dev_id, len, max_rsp, NULL, &ii, flags);
 	// hci_inquiry error or no devices found
-    	if(num_rsp <= 0) {
+	if(num_rsp <= 0) {
 		free(ii);
 		close(sock);
 		XSRETURN_UNDEF;
@@ -204,13 +204,13 @@ get_remote_devices(...)
 
 	HV *return_hash = newHV();
 	int i;
-    	for(i = 0; i < num_rsp; i++) {
-        	ba2str(&(ii+i)->bdaddr, addr);
-        	if(hci_read_remote_name(sock, &(ii+i)->bdaddr, sizeof(name), name, 0) < 0) 
-        		strcpy(name, "[unknown]");
-
+	for(i = 0; i < num_rsp; i++) {
+		ba2str(&(ii+i)->bdaddr, addr);
+		if(hci_read_remote_name(sock, &(ii+i)->bdaddr, sizeof(name), name, 0) < 0) 
+			strcpy(name, "[unknown]");
+	
 		hv_store(return_hash, addr, strlen(addr), newSVpv(name, 0), 0);
-    	}
+	}
 
 	free(ii);
 	PUSHs(sv_2mortal(newRV_inc((SV*) return_hash)));
@@ -231,7 +231,7 @@ sdp_search(addr, service, name)
 	unsigned int portnum = 0;
 	char local_host [] = "FF:FF:FF:00:00:00";
                                                                                 
-	if(strcasecmp(addr, "local") ==  0) 
+	if(strcasecmp(addr, "localhost") ==  0 || strcasecmp(addr, "local") == 0) 
 		str2ba(local_host, &target);
 
 	else
@@ -244,9 +244,8 @@ sdp_search(addr, service, name)
                                                                                 
 	// specify the UUID of the application we are searching for
 	// convert the UUID string into a uuid_t
-	// if service is 0 search for PUBLIC_BROWSE_GROUP
-	if(service == NULL || *service == '0') {
-		//sdp_uuid16_create(&svc_uuid, PUBLIC_BROWSE_GROUP);
+	// if service is not set, search for PUBLIC_BROWSE_GROUP
+	if(service == NULL || strlen(service) == 0 || strlen(service) == 1 && *service == '0') {
 		if(str2uuid(BROWSE_GROUP_STRING, &svc_uuid) != 0) {
 			XSRETURN_UNDEF;
 		}
@@ -254,26 +253,24 @@ sdp_search(addr, service, name)
 	}
 
 	else {
-        	//uint16_t service_id = service;
-        	//sdp_uuid16_create(&svc_uuid, (uint16_t) service);
 		if(str2uuid(service, &svc_uuid) != 0){
 			XSRETURN_UNDEF;
 		}
 	}
 
-    	sdp_list_t *search_list = sdp_list_append(NULL, &svc_uuid);
+   	sdp_list_t *search_list = sdp_list_append(NULL, &svc_uuid);
 	uint32_t range = 0x0000FFFF;
 	sdp_list_t *attrid_list = sdp_list_append(NULL, &range);
 
 
 	// get a list of service records
 	if(sdp_service_search_attr_req(session, search_list, SDP_ATTR_REQ_RANGE, attrid_list, &response_list) != 0) {
-    		sdp_list_free(search_list, 0);
-    		sdp_list_free(attrid_list, 0);
+		sdp_list_free(search_list, 0);
+		sdp_list_free(attrid_list, 0);
 		XSRETURN_UNDEF;
 	}
 
-        sdp_list_t *r = response_list;
+	sdp_list_t *r = response_list;
 
 	// go through each of the service records
 	// create a hash for each record that matches
@@ -288,13 +285,13 @@ sdp_search(addr, service, name)
 			// no name match requested
 			if(!*name) {
 				return_hash = newHV();
-                        	hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(buf, 0), 0);
+				hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(buf, 0), 0);
 			}
 
 			// name matches
 			else if(strcasecmp(name, buf) == 0 )  {
 				return_hash = newHV();
-                        	hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(buf, 0), 0);
+				hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(buf, 0), 0);
 			}
 
 			// name doesn't match, skip record
@@ -312,7 +309,7 @@ sdp_search(addr, service, name)
 			}
 
 			else {
-				// do not create the key?
+				// do not create the key
 			}
 		}
 
@@ -320,27 +317,27 @@ sdp_search(addr, service, name)
 		if(sdp_get_service_desc(rec, buf, sizeof(buf)) == 0) {
 			if(return_hash == NULL)
 				return_hash = newHV();
-                        hv_store(return_hash, "SERVICE_DESC", strlen("SERVICE_DESC"), newSVpv(buf, 0), 0);
+			hv_store(return_hash, "SERVICE_DESC", strlen("SERVICE_DESC"), newSVpv(buf, 0), 0);
 		} 
 
 		else {
-			// do not create the key?
+			// do not create the key
 		}
                                                                                                                       
 		// get service provider name
 		if(! sdp_get_provider_name(rec, buf, sizeof(buf)) == 0) {
 			if(return_hash == NULL)
 				return_hash = newHV();
-                        hv_store(return_hash, "SERVICE_PROV", strlen("SERVICE_PROV"), newSVpv(buf, 0), 0);
+			hv_store(return_hash, "SERVICE_PROV", strlen("SERVICE_PROV"), newSVpv(buf, 0), 0);
 		} 
 
 		else {
-			// do not create the key?
+			// do not create the key
 		}
 
                                                                                                                    
 		// get a list of the protocol sequences
-        	if(sdp_get_access_protos(rec, &proto_list) == 0) {
+		if(sdp_get_access_protos(rec, &proto_list) == 0) {
 			sdp_list_t *p = proto_list;
 			int port;
 
@@ -348,15 +345,15 @@ sdp_search(addr, service, name)
 				return_hash = newHV();
 
 			if((port = sdp_get_proto_port(p, RFCOMM_UUID)) != 0) {
-                        	hv_store(return_hash, "RFCOMM", strlen("RFCOMM"), newSVuv(port), 0);
+				hv_store(return_hash, "RFCOMM", strlen("RFCOMM"), newSVuv(port), 0);
 			} 
 
 			else if((port = sdp_get_proto_port(p, L2CAP_UUID)) != 0) {
-                       		hv_store(return_hash, "L2CAP", strlen("L2CAP"), newSVuv(port), 0);
+				hv_store(return_hash, "L2CAP", strlen("L2CAP"), newSVuv(port), 0);
 			} 
 
 			else {
-                        	hv_store(return_hash, "UNKNOWN", strlen("UNKNOWN"), newSVuv(port), 0);
+				hv_store(return_hash, "UNKNOWN", strlen("UNKNOWN"), newSVuv(port), 0);
 			}
 
 			// sdp_get_access_protos allocates data on the heap for the
@@ -378,8 +375,8 @@ sdp_search(addr, service, name)
 	}
 
 	sdp_list_free(response_list, 0);
-    	sdp_list_free(search_list, 0);
-    	sdp_list_free(attrid_list, 0);
+	sdp_list_free(search_list, 0);
+	sdp_list_free(attrid_list, 0);
 	sdp_close(session);
 
 
@@ -426,7 +423,7 @@ _connect(fd, addr, port, proto)
 	else if(strcasecmp(proto, "L2CAP") == 0) {
 		struct sockaddr_l2 l2addr;
 		l2addr.l2_family = AF_BLUETOOTH;
-    		l2addr.l2_psm = htobs(port);
+		l2addr.l2_psm = htobs(port);
 		str2ba(addr, &l2addr.l2_bdaddr);
 
 		// connect to server
@@ -505,7 +502,7 @@ _accept(fd, proto)
 		PUSHs(sv_2mortal(newSViv(res)));
 		if(res >= 0) {
 			char addr[19];
-        		ba2str(&rcaddr.rc_bdaddr, addr);
+			ba2str(&rcaddr.rc_bdaddr, addr);
 			PUSHs(sv_2mortal(newSVpv(addr, 0)));
 		}
 	}
@@ -517,7 +514,7 @@ _accept(fd, proto)
 		PUSHs(sv_2mortal(newSViv(res)));
 		if(res >= 0) {
 			char addr[19];
-        		ba2str(&l2addr.l2_bdaddr, addr);
+			ba2str(&l2addr.l2_bdaddr, addr);
 			PUSHs(sv_2mortal(newSVpv(addr, 0)));
 		}
 	}

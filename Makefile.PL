@@ -10,9 +10,9 @@ if($Config{osname} =~ /^MSWin/i) {
 	print "**ATTENTION!!**\n";
 	print "Attempting to build for Windows with the following include path:\n";
 	print "$win_include\n";
-	print "If this is not the include path for SP2, please change the\n";
+	print "If this is not the include path for the SP2 SDK, please change the\n";
 	print "\$win_include variable in Makefile.PL.\n\n\n";
-	sleep 2;
+
 	$inc_path = $win_include;
 	copy_xs("MSWin.xs", "Bluetooth.xs"); 
 }

@@ -68,7 +68,7 @@ build_uuid(GUID *uuid, char *service)
 char service_buf[37];
 
 
-	if(service == NULL || strcmp(service, "0") == 0) {
+	if(service == NULL || strcmp(service, "0") == 0 || strlen(service) == 0) {
 		// Use public browse group
 		strcpy(service_buf, UUID_BASE_128);
 		service_buf[4] = '1';
@@ -221,8 +221,13 @@ get_remote_devices()
 				if(return_hash == NULL) 
 					return_hash = newHV();
 
-				hv_store(return_hash, addr_buf, strlen(addr_buf), newSVpv(qs->lpszServiceInstanceName, 0), 0);
-				//ZeroMemory(qs, sizeof(WSAQUERYSET));
+				if(qs->lpszServiceInstanceName == NULL || strlen(qs->lpszServiceInstanceName) == 0) {
+					hv_store(return_hash, addr_buf, strlen(addr_buf), newSVpv("[unknown]", 0), 0);
+				}
+
+				else {
+					hv_store(return_hash, addr_buf, strlen(addr_buf), newSVpv(qs->lpszServiceInstanceName, 0), 0);
+				}
 			} 
 			
 			else {
@@ -231,7 +236,7 @@ get_remote_devices()
 				if(error == WSAEFAULT) {
 					free(qs);
 					qs = (WSAQUERYSET*) malloc(qs_len);
-					//ZeroMemory(qs, sizeof(WSAQUERYSET));
+					ZeroMemory(qs, qs_len);
 				} 
 				else if(error == WSA_E_NO_MORE) {
 					done = 1;
@@ -258,12 +263,16 @@ sdp_search(addr, service, name)
 	char *name
 	PPCODE:
 	char *addrstr = NULL;
-    char *uuidstr = "0";
+	char *uuidstr = "0";
+	char localAddressBuf[32];
 	DWORD qs_len;
 	WSAQUERYSET *qs;
 	DWORD flags;
 	HANDLE h;
-    GUID uuid;
+	GUID uuid;
+	SOCKADDR_BTH sa;
+	int sa_len = sizeof(sa);
+	int local_fd = 0;
 	int done = 0;
 	int proto;
 	int port;
@@ -278,13 +287,42 @@ sdp_search(addr, service, name)
 
 	flags = LUP_FLUSHCACHE | LUP_RETURN_ALL;
 
-
 	ZeroMemory(qs, qs_len);
 	qs->dwSize = sizeof(WSAQUERYSET);
 	qs->dwNameSpace = NS_BTH;
 	// ignored for queries?
-    qs->dwNumberOfCsAddrs = 0;
-    qs->lpszContext = (LPSTR) addr;
+	qs->dwNumberOfCsAddrs = 0;
+
+	if(strcmp(addr, "localhost") == 0 || strcmp(addr, "local") == 0 ) {
+			memset(&sa, 0, sizeof(sa));
+			local_fd = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
+			if(local_fd < 1) {
+				free(qs);
+				XSRETURN_UNDEF;
+			}
+
+			sa.addressFamily = AF_BTH;
+			sa.port = BT_PORT_ANY;
+			if(bind(local_fd,(LPSOCKADDR)&sa,sa_len) != NO_ERROR) {
+				free(qs);
+				close(local_fd);
+				XSRETURN_UNDEF;
+			}
+                                                                                                                         
+			if(getsockname(local_fd, (LPSOCKADDR)&sa, &sa_len) != NO_ERROR) {
+				free(qs);
+				close(local_fd);
+				XSRETURN_UNDEF;
+			}
+
+			ba2str(sa.btAddr, localAddressBuf);
+			qs->lpszContext = (LPSTR) localAddressBuf;
+			close(local_fd);
+	}
+
+	else {
+		qs->lpszContext = (LPSTR) addr;
+	}
 
 
 	memset(&uuid, 0, sizeof(uuid));
@@ -296,7 +334,7 @@ sdp_search(addr, service, name)
 	qs->lpServiceClassId = &uuid;
 
 	if(WSALookupServiceBegin(qs, flags, &h) == SOCKET_ERROR) {
-        free(qs);
+		free(qs);
 		XSRETURN_UNDEF;
 	}
 
@@ -306,7 +344,25 @@ sdp_search(addr, service, name)
 			if(WSALookupServiceNext(h, flags, &qs_len, qs) == NO_ERROR) {
 				return_hash = newHV();
 
-				if(qs->lpszServiceInstanceName && strlen(qs->lpszServiceInstanceName) > 0) {
+				// If name is valid, then compare names.
+				if(name && strlen(name) > 0) {
+					if(qs->lpszServiceInstanceName && strlen(qs->lpszServiceInstanceName) > 0) {
+						if(strcmp(name, qs->lpszServiceInstanceName) == 0) {
+							hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"),
+			                         newSVpv(qs->lpszServiceInstanceName, 0), 0);
+						}
+
+						else {
+							continue;
+						}
+					}
+
+					else {
+						continue;
+					}
+				}
+
+				else if(qs->lpszServiceInstanceName && strlen(qs->lpszServiceInstanceName) > 0) {
 					hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"), newSVpv(qs->lpszServiceInstanceName, 0), 0);
 				}
 
@@ -367,7 +423,7 @@ sdp_search(addr, service, name)
  
 void
 _register_service(serverfd, proto, port, service_id, name, desc, advertise)
-    int serverfd
+	int serverfd
 	char *proto
 	int port
 	char *service_id
@@ -375,15 +431,15 @@ _register_service(serverfd, proto, port, service_id, name, desc, advertise)
 	char *desc
 	int advertise
 	PPCODE:
-    WSAQUERYSET qs;
-    WSAESETSERVICEOP op;
+	WSAQUERYSET qs;
+	WSAESETSERVICEOP op;
 	SOCKADDR_BTH sa;
 	int sa_len = sizeof(sa);
-    char *service_name = NULL;
-    char *service_desc = NULL;
-    char *service_class_id_str = NULL;
+	char *service_name = NULL;
+	char *service_desc = NULL;
+	char *service_class_id_str = NULL;
 	CSADDR_INFO sockInfo;
-    GUID uuid;
+	GUID uuid;
 
 
 	EXTEND(sp, 1);
@@ -496,18 +552,18 @@ _bind(fd, port, proto)
 	int port
 	char *proto
 	CODE:
-    int status;
-    SOCKADDR_BTH sa;
-    int sa_len;
+	int status;
+	SOCKADDR_BTH sa;
+	int sa_len;
 	
 	sa_len = sizeof(sa);
 
 	memset(&sa, 0, sa_len);
 
-    sa.btAddr = 0;
-    sa.addressFamily = AF_BTH;
-    sa.port = port;
-    status = bind(fd, (LPSOCKADDR)&sa, sa_len);
+	sa.btAddr = 0;
+	sa.addressFamily = AF_BTH;
+	sa.port = port;
+	status = bind(fd, (LPSOCKADDR)&sa, sa_len);
 	if(status == NO_ERROR) {
 		RETVAL = 0;
 	}
@@ -556,7 +612,7 @@ _accept(fd, proto)
 	res = accept(fd, (LPSOCKADDR)&rcaddr, &addr_len);
 	if(res != INVALID_SOCKET) {
 		PUSHs(sv_2mortal(newSViv(res)));
-       		ba2str(rcaddr.btAddr, addr);
+		ba2str(rcaddr.btAddr, addr);
 		PUSHs(sv_2mortal(newSVpv(addr, 0)));
 	}
 
@@ -567,10 +623,10 @@ _accept(fd, proto)
 
 void
 _getpeername(fd, proto)
-        int fd
-        char *proto
-        PPCODE:
-        EXTEND(sp, 2);
+	int fd
+	char *proto
+	PPCODE:
+	EXTEND(sp, 2);
 	// not implemented for Windows yet
 	PUSHs(sv_2mortal(newSVuv(0)));
 	PUSHs(sv_2mortal(newSVuv(0)));

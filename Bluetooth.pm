@@ -9,7 +9,7 @@ require 5.007;
 
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw(get_remote_devices sdp_search);
-$VERSION = '0.35';
+$VERSION = '0.36';
 bootstrap Net::Bluetooth $VERSION;
 
 _init();
@@ -27,7 +27,7 @@ my $self = {};
 
 	return if($proto !~ /^RFCOMM$|^L2CAP$/i);
 
-        $self->{PROTO} = $proto;
+	$self->{PROTO} = $proto;
 
 	#### test this
 	if(defined($client) && defined($addr)) {
@@ -41,8 +41,8 @@ my $self = {};
 		$self->{SOCK_FD} = $sock;
 	}
 
-        bless($self, $class);
-        return $self;
+	bless($self, $class);
+	return $self;
 }
                                                                                                                       
 
@@ -213,8 +213,8 @@ Net::Bluetooth - Perl Bluetooth Interface
   #### foreach service record
   foreach $rec_ref (@sdp_array) {
 	#### Print all available information for service
-	foreach $key (keys %$rec_ref) {
-		print "Key: $key Value: $rec_ref->{$key}\n";
+	foreach $attr (keys %$rec_ref) {
+		print "Attribute: $attr Value: $rec_ref->{$attr}\n";
 	}
   }
 
@@ -307,7 +307,9 @@ Searches for remote Bluetooth devices. The search will
 take approximately 5 - 10 seconds (This will be a configurable 
 value in the future.). When finished, it will return a hash
 reference that contains the device address and name. The
-address is the key and the name is the value.
+address is the key and the name is the value. Name will be
+set to "[unknown]" if the name could not be resolved. See the
+NOTES section of this document for more information about this.
 
 =item sdp_search($addr, $uuid, $name) 
 
@@ -328,7 +330,7 @@ L2CAP: L2CAP Port
 UNKNOWN: Unknown Protocol  Port
 If any of the values are unavailable, the keys will not exist.
 
-If $addr is "local" the call will use the local SDP server. (BlueZ only)
+If $addr is "localhost" the call will use the local SDP server.
 
 =back 
 
@@ -421,9 +423,21 @@ All uuids used with this module can either be 128 bit values:
 must be represented as strings (enclosed in quotes), and must be hexadecimal
 values.
 
+Windows will not immediately return the device name if it is not already
+cached. Also there is no mechinism to alert the system when it has acquired
+the device name. Therefore you may have to call get_remote_devices() twice
+before the name shows up. I'll see if this can be handled better in the
+future.
+                                                                                                                         
+Currently on Windows, the service name and description returned by sdp_search()
+are not setting their terminating NULL character properly. This can result in
+some garbage characters at the end of the string. I am looking at parsing
+the raw record to fix this problem.
+
 =head1 REQUIREMENTS
 
-You need BlueZ or Microsoft Service Pack 2 installed.
+You need BlueZ or Microsoft Service Pack 2 installed and the Microsoft Platform SDK.
+Windows needs at least Perl 5.8.
 
 =head1 AUTHOR
 

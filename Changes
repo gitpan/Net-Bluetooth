@@ -12,3 +12,12 @@ Revision history for Perl extension Net::Bluetooth
 	  was not searching the public group.
 	- Fixed a bug in the sdp_search for Win where keys
 	  where being defined when there was no value.
+
+0.36  Tue June 20 02:07:10 2006
+	- Added localhost sdp_search for Windows.
+	- Added samples directory.
+	- Fixed a bug with undef searching and sdp_search().
+	- Set device name to [unknown] on Windows if it isn't defined.
+	- Updated documentation.
+	- Fixed bug where sdp_search was not looking at the name arg
+	  on Windows.
