@@ -21,3 +21,8 @@ Revision history for Perl extension Net::Bluetooth
 	- Updated documentation.
 	- Fixed bug where sdp_search was not looking at the name arg
 	  on Windows.
+
+0.37  Fri June 23 23:52:11 2006
+	- bind, listen, connect, were returning undef instead of a integer.
+	- Added GPS sample.
+	- String compares on Windows are now case-insensitive.

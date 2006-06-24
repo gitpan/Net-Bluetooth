@@ -199,15 +199,15 @@ get_remote_devices()
 	// return undef if error and empty hash if no devices found?
 	if(iRet == SOCKET_ERROR) {
 		error = WSAGetLastError();
-        if(error == WSASERVICE_NOT_FOUND) {
+		if(error == WSASERVICE_NOT_FOUND) {
 			// No device
-            WSALookupServiceEnd(hLookup);
-            free(qs); 
-        } 
+			WSALookupServiceEnd(hLookup);
+			free(qs); 
+		} 
 		
 		else {
-            free(qs);
-        }
+			free(qs);
+		}
 	}
 
 	else {
@@ -238,9 +238,11 @@ get_remote_devices()
 					qs = (WSAQUERYSET*) malloc(qs_len);
 					ZeroMemory(qs, qs_len);
 				} 
+
 				else if(error == WSA_E_NO_MORE) {
 					done = 1;
 				}
+
 				else {
 					done = 1;
 				}
@@ -293,7 +295,7 @@ sdp_search(addr, service, name)
 	// ignored for queries?
 	qs->dwNumberOfCsAddrs = 0;
 
-	if(strcmp(addr, "localhost") == 0 || strcmp(addr, "local") == 0 ) {
+	if(_stricmp(addr, "localhost") == 0 || _stricmp(addr, "local") == 0 ) {
 			memset(&sa, 0, sizeof(sa));
 			local_fd = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
 			if(local_fd < 1) {
@@ -347,7 +349,7 @@ sdp_search(addr, service, name)
 				// If name is valid, then compare names.
 				if(name && strlen(name) > 0) {
 					if(qs->lpszServiceInstanceName && strlen(qs->lpszServiceInstanceName) > 0) {
-						if(strcmp(name, qs->lpszServiceInstanceName) == 0) {
+						if(_stricmp(name, qs->lpszServiceInstanceName) == 0) {
 							hv_store(return_hash, "SERVICE_NAME", strlen("SERVICE_NAME"),
 			                         newSVpv(qs->lpszServiceInstanceName, 0), 0);
 						}
@@ -450,12 +452,12 @@ _register_service(serverfd, proto, port, service_id, name, desc, advertise)
 	memset(&uuid, 0, sizeof(uuid));
 
 
-    op = advertise ? RNRSERVICE_REGISTER : RNRSERVICE_DELETE;
+	op = advertise ? RNRSERVICE_REGISTER : RNRSERVICE_DELETE;
 
-    if(getsockname(serverfd, (SOCKADDR*) &sa, &sa_len) == SOCKET_ERROR) {
+	if(getsockname(serverfd, (SOCKADDR*) &sa, &sa_len) == SOCKET_ERROR) {
 		PUSHs(sv_2mortal(newSViv(1)));
-        XSRETURN_IV(0);
-    }
+		XSRETURN_IV(0);
+	}
 
 	if(build_uuid(&uuid, service_id) != 0) {
 		XSRETURN_IV(0);
@@ -468,17 +470,17 @@ _register_service(serverfd, proto, port, service_id, name, desc, advertise)
 	sockInfo.RemoteAddr.lpSockaddr = (LPSOCKADDR) &sa;
 	sockInfo.RemoteAddr.iSockaddrLength = sizeof(sa);
 
-    qs.dwSize = sizeof(qs);
-    qs.dwNameSpace = NS_BTH;
-    qs.lpcsaBuffer = &sockInfo;
-    qs.lpszServiceInstanceName = name;
-    qs.lpszComment = name;
-    qs.lpServiceClassId = (LPGUID) &uuid;
-    qs.dwNumberOfCsAddrs = 1;
+	qs.dwSize = sizeof(qs);
+	qs.dwNameSpace = NS_BTH;
+	qs.lpcsaBuffer = &sockInfo;
+	qs.lpszServiceInstanceName = name;
+	qs.lpszComment = name;
+	qs.lpServiceClassId = (LPGUID) &uuid;
+	qs.dwNumberOfCsAddrs = 1;
 
-    if(WSASetService(&qs, op, 0) ==  SOCKET_ERROR) {
+	if(WSASetService(&qs, op, 0) ==  SOCKET_ERROR) {
 		PUSHs(sv_2mortal(newSViv(0)));
-    }
+	}
 
 	else {
 		PUSHs(sv_2mortal(newSViv(1)));
@@ -503,11 +505,11 @@ _socket(proto)
 	char *proto
 	CODE:
 
-	if(strcmp(proto, "RFCOMM") == 0)  {
+	if(_stricmp(proto, "RFCOMM") == 0)  {
 		RETVAL = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
 	}
 
-	else if(strcmp(proto, "L2CAP") == 0) {
+	else if(_stricmp(proto, "L2CAP") == 0) {
 		RETVAL = socket(AF_BTH, SOCK_STREAM, BTHPROTO_L2CAP);
 	}
 
@@ -527,13 +529,13 @@ _connect(fd, addr, port, proto)
 	char *proto
 	CODE:
 	SOCKADDR_BTH sa;
-    int sa_len = sizeof(sa);
+	int sa_len = sizeof(sa);
 	memset(&sa, 0, sizeof(sa));
 
 
 	if(WSAStringToAddress(addr, AF_BTH, NULL, (LPSOCKADDR)&sa, &sa_len) == SOCKET_ERROR) {
-        RETVAL = -1;
-    }
+		RETVAL = -1;
+	}
 
 	else {
 		sa.addressFamily = AF_BTH;

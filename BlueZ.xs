@@ -56,8 +56,8 @@ str2uuid(char *uuid_str, uuid_t *uuid)
         if(endptr != buf + 8) return -1;
                                                                                                                         
         // fourth 8-bytes
-		strncpy(buf, uuid_str+28, 8);
-		uuid_int[3] = htonl(strtoul(buf, &endptr, 16));
+	strncpy(buf, uuid_str+28, 8);
+	uuid_int[3] = htonl(strtoul(buf, &endptr, 16));
         if(endptr != buf + 8) return -1;
                                                                                                                         
         if(uuid != NULL) sdp_uuid128_create(uuid, uuid_int);

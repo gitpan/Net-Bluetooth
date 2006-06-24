@@ -5,11 +5,11 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 use Carp;
 require Exporter;
 require DynaLoader;
-require 5.007;
+require 5.008;
 
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw(get_remote_devices sdp_search);
-$VERSION = '0.36';
+$VERSION = '0.37';
 bootstrap Net::Bluetooth $VERSION;
 
 _init();
@@ -51,7 +51,7 @@ my $self = shift;
 my $addr = shift;
 my $port = shift;
 
-	return if(_connect($self->{SOCK_FD}, $addr, $port, $self->{PROTO}) < 0);
+	return -1 if(_connect($self->{SOCK_FD}, $addr, $port, $self->{PROTO}) < 0);
 
 	$self->{ADDR} = $addr;
 	$self->{PORT} = $port;
@@ -72,7 +72,7 @@ sub bind {
 my $self = shift;
 my $port = shift;
 
-	return if(_bind($self->{SOCK_FD}, $port, $self->{PROTO}) < 0);
+	return -1 if(_bind($self->{SOCK_FD}, $port, $self->{PROTO}) < 0);
 	$self->{PORT} = $port;
 
 	return 0;
@@ -83,7 +83,7 @@ sub listen {
 my $self = shift;
 my $backlog = shift;
 
-	return if(_listen($self->{SOCK_FD}, $backlog) < 0);
+	return -1 if(_listen($self->{SOCK_FD}, $backlog) < 0);
 
 	return 0;
 }
@@ -93,7 +93,7 @@ sub accept {
 my $self = shift;
 
 	my ($client, $addr) = _accept($self->{SOCK_FD}, $self->{PROTO});
-	return undef if($client < 0);
+	return if($client < 0);
 
 	return(Net::Bluetooth->newsocket($self->{PROTO}, $client, $addr));
 }
@@ -221,9 +221,9 @@ Net::Bluetooth - Perl Bluetooth Interface
 
   #### Create a RFCOMM client 
   $obj = Net::Bluetooth->newsocket("RFCOMM");
+  die "socket error $!\n" unless(defined($obj)); 
   if($obj->connect($addr, $port) != 0) {
-	print "connect error: $!\n";
-	exit;
+	die "connect error: $!\n";
   }
 
   #### create a Perl filehandle for reading and writing
@@ -237,14 +237,12 @@ Net::Bluetooth - Perl Bluetooth Interface
   $obj = Net::Bluetooth->newsocket("RFCOMM");
   #### bind to port 1
   if($obj->bind(1) != 0) {
-	print "bind error: $!\n";
-	exit;
+	die "bind error: $!\n";
   }
 
   #### listen with a backlog of 2
   if($obj->listen(2) != 0) {
-	print "listen error: $!\n";
-	exit;
+	die "listen error: $!\n";
   }
 
   #### register a service
@@ -257,8 +255,7 @@ Net::Bluetooth - Perl Bluetooth Interface
   #### accept a client connection
   $client_obj = $obj->accept();
   unless(defined($client_obj)) {
-	print "client accept failed: $!\n";
-	exit;
+	die "client accept failed: $!\n";
   }
 
   #### get client information
@@ -279,23 +276,25 @@ Net::Bluetooth - Perl Bluetooth Interface
 
 This module creates a Bluetooth interface for Perl.
 
-C<Net::Bluetooth> works with the BlueZ libs as well as with
+Net::Bluetooth works with the BlueZ libs as well as with
 Microsoft Windows.
 
 If you are going to be using a Unix system, the Bluez libs can
 be obtained at www.bluez.org. Please make sure these are installed
 and working properly before you install the module. Depending on
 your system BlueZ maybe already installed, or you may have to build
-it yourself and do some configuration. You can verify BlueZ can detect
-devices and services with the utilities that come with it (hciconfig,
-sdptool, hcitool, etc).
+it yourself and do some configuration. You can verify that BlueZ can
+detect devices and services with the utilities that are included with
+it (hciconfig, sdptool, hcitool, etc).
 
-If you are using Windows, make sure you have Service Pack 2 installed.
-The module should actually work with Service Pack 1, but I have not
-tested with it. There is also a good chance you will have to tell the module
-where to look for the SP include files. You can do this by setting the
-$win_include variable at the top of Makefile.PL. This is where the
-module will look for all the bluetooth header files (ws2bth.h, etc).
+If you are using Windows, please make sure you have Service Pack 2
+installed and the Microsoft Platform SDK. Also please make sure the
+"$win_include" variable at the top of Makfile.PL is set properly. This
+needs to point to the SDK include directory for SP2. This is where the
+module will look for all the Bluetooth header files (ws2bth.h, etc).
+
+Please check out the samples included in the samples directory for more
+general information.
 
 =head1 FUNCTIONS
 
@@ -322,12 +321,19 @@ all public service records for the device.
 
 The return value is a list which contains a hash reference for
 each service record found. The key/values for the hash are as follows:
-SERVICE_NAME: Service Name
-SERVICE_DESC: Service Description
-SERVICE_PROV: Service Provider
-RFCOMM: RFCOMM Port
-L2CAP: L2CAP Port
-UNKNOWN: Unknown Protocol  Port
+
+C<SERVICE_NAME>: Service Name
+
+C<SERVICE_DESC>: Service Description
+
+C<SERVICE_PROV>: Service Provider
+
+C<RFCOMM>: RFCOMM Port
+
+C<L2CAP>: L2CAP Port
+
+C<UNKNOWN>: Unknown Protocol  Port
+
 If any of the values are unavailable, the keys will not exist.
 
 If $addr is "localhost" the call will use the local SDP server.
@@ -349,7 +355,7 @@ socket.
 
 =item connect($addr, $port)
 
-This calls the connect() system call with address and port you
+This calls the connect() system call with the address and port you
 supply. You can use this to connect to a server. Returns 0 on
 success.
 
@@ -374,7 +380,7 @@ socket object which is returned. On failure it will return undef.
 
 This call returns a Perl filehandle for a open socket. You can
 use the Perl filehandle as you would any other filehandle, except
-with Perl calls that use the socket address structure. This 
+with Perl functions that use the socket address structure. This 
 provides a easy way to do socket IO instead of doing it through the
 socket object. Currently this is the only way to do socket IO,
 although soon I will provide read/write calls through the object
@@ -428,8 +434,8 @@ cached. Also there is no mechinism to alert the system when it has acquired
 the device name. Therefore you may have to call get_remote_devices() twice
 before the name shows up. I'll see if this can be handled better in the
 future.
-                                                                                                                         
-Currently on Windows, the service name and description returned by sdp_search()
+
+Currently on Windows the service name and description returned by sdp_search()
 are not setting their terminating NULL character properly. This can result in
 some garbage characters at the end of the string. I am looking at parsing
 the raw record to fix this problem.

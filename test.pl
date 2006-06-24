@@ -8,7 +8,6 @@
 
 BEGIN { $| = 1; print "0..1\n"; }
 END {print "not ok 1\n" unless $loaded;}
-require 5.007;
 use Config qw(%Config);
 use Net::Bluetooth;
 $loaded = 1;

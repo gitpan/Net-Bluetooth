@@ -1,5 +1,6 @@
 use ExtUtils::MakeMaker;
 use Config qw(%Config);
+require 5.008;
 my $win_include = '"-IC:\\PROGRAM FILES\\MICROSOFT PLATFORM SDK FOR WINDOWS SERVER 2003 R2\\INCLUDE"';
 my $lib_path = "";
 my $inc_path = "";
