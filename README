@@ -6,8 +6,15 @@ TO INSTALL RUN:
         make test
         make install
                                                                                                                         
+If you would like to use the prebuilt Windows XP version,
+you can find the most recent ppd file at:
+http://www.conditor.com/Net-Bluetooth.ppd
+                                                                                                                        
+Usually to install the prebuilt Windows XP version you would run:
+ppm install http://www.conditor.com/Net-Bluetooth.ppd
 
 Once installed, run 'perldoc Net::Bluetooth' for more information.
+
 
 If you are going to be using a Unix system, the Bluez libs can
 be obtained at www.bluez.org. Please make sure these are installed
@@ -17,7 +24,7 @@ it yourself and do some configuration. You can verify BlueZ can detect
 devices and services with the utilities that are included with it
 (hciconfig, sdptool, hcitool, etc).
                                                                                                                        
-If you are using Windows, please make sure you have Service Pack 2
+If you are using Windows XP, please make sure you have Service Pack 2
 installed and the Microsoft Platform SDK. Also please make sure the
 "$win_include" variable at the top of Makfile.PL is set properly. This
 needs to point to the SDK include directory for SP2. This is where the

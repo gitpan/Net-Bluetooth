@@ -26,3 +26,6 @@ Revision history for Perl extension Net::Bluetooth
 	- bind, listen, connect, were returning undef instead of a integer.
 	- Added GPS sample.
 	- String compares on Windows are now case-insensitive.
+
+0.38  Sun October 08 18:54:11 2006
+	- Just updated the README to include the ppd/ppm info for Windows.
