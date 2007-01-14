@@ -9,7 +9,7 @@ require 5.008;
 
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw(get_remote_devices sdp_search);
-$VERSION = '0.38';
+$VERSION = '0.39';
 bootstrap Net::Bluetooth $VERSION;
 
 _init();

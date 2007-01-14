@@ -29,3 +29,6 @@ Revision history for Perl extension Net::Bluetooth
 
 0.38  Sun October 08 18:54:11 2006
 	- Just updated the README to include the ppd/ppm info for Windows.
+
+0.39  Sun January 14 16:42:11 2007
+	- Fixed a deallocation bug when creating a L2CAP service.

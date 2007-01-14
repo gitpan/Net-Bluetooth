@@ -405,6 +405,7 @@ _connect(fd, addr, port, proto)
 	int port
 	char *proto
 	CODE:
+	//char local_host [] = "FF:FF:FF:00:00:00";
 
 	if(strcasecmp(proto, "RFCOMM") == 0) {
 		struct sockaddr_rc rcaddr;
@@ -424,7 +425,14 @@ _connect(fd, addr, port, proto)
 		struct sockaddr_l2 l2addr;
 		l2addr.l2_family = AF_BLUETOOTH;
 		l2addr.l2_psm = htobs(port);
+
 		str2ba(addr, &l2addr.l2_bdaddr);
+		/*if(strcasecmp(addr, "localhost") ==  0 || strcasecmp(addr, "local") == 0)  {
+			str2ba(local_host, &l2addr.l2_bdaddr);
+		}
+		else 
+		*/
+
 
 		// connect to server
 		if(connect(fd, (struct sockaddr *)&l2addr, sizeof(l2addr)) == 0) 
@@ -562,22 +570,28 @@ _register_service_handle(proto, port, service_id, name, desc)
 	// set l2cap information
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
 	l2cap_list = sdp_list_append(0, &l2cap_uuid);
+	proto_list = sdp_list_append(0, l2cap_list);
+
+
 	if(strcasecmp(proto, "L2CAP") == 0) {
     		uint16_t l2cap_port = port;
     		psm = sdp_data_alloc(SDP_UINT16, &l2cap_port);
     		sdp_list_append(l2cap_list, psm);
 	}
-	proto_list = sdp_list_append(0, l2cap_list);
+	//proto_list = sdp_list_append(0, l2cap_list);
                                                                                                                    
 	// set rfcomm information
-	sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
-	rfcomm_list = sdp_list_append(0, &rfcomm_uuid);
+	//sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+	//rfcomm_list = sdp_list_append(0, &rfcomm_uuid);
 	if(strcasecmp(proto, "RFCOMM") == 0) {
+		sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
+		rfcomm_list = sdp_list_append(0, &rfcomm_uuid);
     		uint8_t rfcomm_channel = port;
     		channel = sdp_data_alloc(SDP_UINT8, &rfcomm_channel);
     		sdp_list_append(rfcomm_list, channel);
+		sdp_list_append(proto_list, rfcomm_list);
 	}
-	sdp_list_append(proto_list, rfcomm_list);
+	//sdp_list_append(proto_list, rfcomm_list);
                                                                                                                    
 	// attach protocol information to service record
 	access_proto_list = sdp_list_append( 0, proto_list );
@@ -604,7 +618,8 @@ _register_service_handle(proto, port, service_id, name, desc)
 		PUSHs(sv_2mortal(newSViv(0)));
 	}
                                                                                                                    
-	sdp_data_free(channel);
+	if(psm) sdp_data_free(psm);
+	if(channel) sdp_data_free(channel);
 	sdp_list_free(l2cap_list, 0);
 	sdp_list_free(rfcomm_list, 0);
 	sdp_list_free(root_list, 0);
