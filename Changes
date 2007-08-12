@@ -32,3 +32,7 @@ Revision history for Perl extension Net::Bluetooth
 
 0.39  Sun January 14 16:42:11 2007
 	- Fixed a deallocation bug when creating a L2CAP service.
+
+0.40  Sat August 11 19:48:00 2007
+	- perlfh() now returns the filehandle by value instead of reference. This was causing
+	  problems with multiple clients.

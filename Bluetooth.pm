@@ -9,7 +9,7 @@ require 5.008;
 
 @ISA = qw(Exporter DynaLoader);
 @EXPORT = qw(get_remote_devices sdp_search);
-$VERSION = '0.39';
+$VERSION = '0.40';
 bootstrap Net::Bluetooth $VERSION;
 
 _init();
@@ -120,7 +120,7 @@ sub perlfh {
 my $self = shift;
 
 	*SOCK = _perlfh($self->{SOCK_FD});
-	return \*SOCK;
+	return *SOCK;
 }
 
 
