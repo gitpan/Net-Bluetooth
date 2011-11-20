@@ -132,17 +132,6 @@ _close(sock)
 	PPCODE:
 	close(sock);
 
-InOutStream
-_perlfh(fd)
-	int fd
-	CODE:
-	InOutStream fh = PerlIO_fdopen(fd, "r+");
-	RETVAL = fh;
-
-	OUTPUT:
-	RETVAL 
-
-
 unsigned int
 _use_service_handle()
 	CODE:
@@ -409,6 +398,7 @@ _connect(fd, addr, port, proto)
 
 	if(strcasecmp(proto, "RFCOMM") == 0) {
 		struct sockaddr_rc rcaddr;
+		memset(&rcaddr, 0, sizeof(rcaddr));
 		rcaddr.rc_family = AF_BLUETOOTH;
 		rcaddr.rc_channel = (uint8_t) port;
 		str2ba(addr, &rcaddr.rc_bdaddr);
@@ -423,6 +413,7 @@ _connect(fd, addr, port, proto)
 
 	else if(strcasecmp(proto, "L2CAP") == 0) {
 		struct sockaddr_l2 l2addr;
+		memset(&l2addr, 0, sizeof(l2addr));
 		l2addr.l2_family = AF_BLUETOOTH;
 		l2addr.l2_psm = htobs(port);
 
@@ -458,7 +449,9 @@ _bind(fd, port, proto)
 
 	if(strcasecmp(proto, "RFCOMM") == 0)  {
 		struct sockaddr_rc rcaddr;
+
 		// set the connection parameters 
+		memset(&rcaddr, 0, sizeof(rcaddr));
 		rcaddr.rc_family = AF_BLUETOOTH;
 		rcaddr.rc_channel = (uint8_t) port;
 		rcaddr.rc_bdaddr = *BDADDR_ANY;
@@ -468,7 +461,9 @@ _bind(fd, port, proto)
 
 	else if(strcasecmp(proto, "L2CAP") == 0) {
 		struct sockaddr_l2 l2addr;
+
 		// set the connection parameters 
+		memset(&l2addr, 0, sizeof(l2addr));
 		l2addr.l2_family = AF_BLUETOOTH;
 		l2addr.l2_psm = htobs(port);
 		l2addr.l2_bdaddr = *BDADDR_ANY;
