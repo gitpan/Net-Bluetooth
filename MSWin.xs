@@ -141,6 +141,17 @@ _deinit()
 	WSACleanup();
 
 
+InOutStream
+_perlfh(fd)
+	int fd
+	CODE:
+	InOutStream fh = PerlIO_fdopen(fd, "r+");
+	RETVAL = fh;
+
+	OUTPUT:
+	RETVAL 
+
+
 void
 _close(sock)
 	int sock

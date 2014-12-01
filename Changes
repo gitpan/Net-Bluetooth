@@ -1,5 +1,10 @@
 Revision history for Perl extension Net::Bluetooth
 
+0.41  Mon Dec 01 10:20:00 2014
+    - Created repository on Bitbucket.
+    - Incorporated change from ticket #54014 (Benoit Peccatte)
+    - Pushing updated version
+
 0.32  Fri June 09 14:05:11 2006
 	- Initial creation
 
